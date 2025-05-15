@@ -2,8 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 class Book:
-    id_counter = 0 
-    def __init__(self, title: str, author: str, published_year: int, quantity: int):
+    def __init__(self, title, author, published_year, quantity, book_id=None):
         if not title or not author or not published_year or not quantity:
             raise ValueError("Data cannot be empty.")
         
@@ -16,9 +15,7 @@ class Book:
             self.quantity = int(quantity)
         except ValueError:
             raise ValueError("Quantity must be an integer and greater than zero.")
-        
-        self.id = Book.id_counter 
-        Book.id_counter += 1 
+        self.id = book_id 
         self.title = title
         self.author = author
         self.published_year = published_year
