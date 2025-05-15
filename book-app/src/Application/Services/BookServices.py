@@ -1,122 +1,66 @@
-from src.Application.Interfaces.BookInterfaceImplementation import BookInterfaceImplementation
+from typing import List, Optional, Dict, Any
+from src.Domain.Interfaces.BookInterface import BookRepositoryInterface
 from src.Domain.Entities.Book import Book
 
 class BookServices:
-    """Service layer for managing book operations."""
 
-    def __init__(self, file_path="book-app\src\Infrastructure\Data\Books.json"):
-        """Initialize book service with data storage path.
-        
-        Args:
-            file_path (str): Path to JSON storage file
-        """
-        self.book_interface = BookInterfaceImplementation(file_path=file_path)
+    def __init__(self, book_repository: BookRepositoryInterface):
+        self._repository = book_repository
 
-    def browse(self):
-        """Retrieve all books from storage.
-        
-        Returns:
-            list[Book]: List of all books
-        """
-        return self.book_interface.browse()
+    def browse(self) -> List[Book]:
+        return self._repository.browse()
 
-    def add(self, book_data):
-        """Add a new book to storage.
-        
-        Args:
-            book_data (dict): Book data containing title, author, published_year, quantity
-            
-        Returns:
-            int: ID of newly added book
-            
-        Raises:
-            ValueError: If book data is invalid
-        """
-        try:
-            self._validate_book_data(book_data)
-            new_book = Book(
-                title=book_data['title'],
-                author=book_data['author'],
-                published_year=book_data['published_year'],
-                quantity=book_data['quantity']
-            )
-            return self.book_interface.add(new_book.__dict__)
-        except ValueError as e:
-            raise ValueError(f"Failed to add book: {e}")
-
-    def edit(self, book_id, updated_book_data):
-        """Edit an existing book.
-        
-        Args:
-            book_id (int): ID of book to edit
-            updated_book_data (dict): New book data
-            
-        Raises:
-            ValueError: If book not found or data invalid
-        """
-        try:
-            self._validate_book_data(updated_book_data)
-            updated_book = Book(
-                title=updated_book_data['title'],
-                author=updated_book_data['author'],
-                published_year=updated_book_data['published_year'],
-                quantity=updated_book_data['quantity'],
-                book_id=book_id
-            )
-            self.book_interface.edit(book_id, updated_book.__dict__)
-        except (IndexError, ValueError) as e:
-            raise ValueError(f"Failed to update book: {e}")
-
-    def read(self, book_id):
-        """Retrieve a specific book by ID.
-        
-        Args:
-            book_id (int): ID of book to retrieve
-            
-        Returns:
-            Book: Found book object
-            
-        Raises:
-            ValueError: If book not found
-        """
-        book = self.book_interface.read(book_id)
+    def read(self, book_id: int) -> Book:
+        book = self._repository.read(book_id)
         if not book:
             raise ValueError(f"Book with ID {book_id} not found")
         return book
 
-    def delete(self, book_id):
-        """Delete a book by ID.
-        
-        Args:
-            book_id (int): ID of book to delete
-            
-        Raises:
-            ValueError: If book not found
-        """
-        try:
-            self.book_interface.delete(book_id)
-        except IndexError:
-            raise ValueError(f"Book with ID {book_id} not found")
+    def add(self, book_data: Dict[str, Any]) -> int:
+        self._validate_book_data(book_data)
+        return self._repository.add(book_data)
 
-    def _validate_book_data(self, book_data):
-        """Validate book data fields and types.
+    def edit(self, book_id: int, book_data: Dict[str, Any]) -> bool:
+        if book_data:
+            self._validate_book_data(book_data, is_update=True)
         
-        Args:
-            book_data (dict): Book data to validate
-            
-        Raises:
-            ValueError: If validation fails
-        """
-        required_fields = ['title', 'author', 'published_year', 'quantity']
-        
-        if not all(key in book_data for key in required_fields):
-            raise ValueError("Missing required book data fields")
-            
-        if not book_data['title'] or not book_data['author']:
-            raise ValueError("Title and author cannot be empty")
-            
-        if not isinstance(book_data['published_year'], int):
-            raise ValueError("Published year must be an integer")
-            
-        if not isinstance(book_data['quantity'], int) or book_data['quantity'] < 0:
-            raise ValueError("Quantity must be a non-negative integer")
+        success = self._repository.edit(book_id, book_data)
+        if not success:
+            raise ValueError(f"Book with ID {book_id} not found")
+        return True
+
+    def delete(self, book_id: int) -> bool:
+        success = self._repository.delete(book_id)
+        if not success:
+            raise ValueError(f"Book with ID {book_id} not found")
+        return True
+    def _validate_book_data(self, book_data: Dict[str, Any], is_update: bool = False) -> None:
+        required_fields = {'title', 'author', 'published_year', 'quantity'}
+
+        if not is_update:
+            missing_fields = required_fields - book_data.keys()
+            if missing_fields:
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+        validators = {
+            'title': self._validate_non_empty_string,
+            'author': self._validate_non_empty_string,
+            'published_year': self._validate_positive_integer,
+            'quantity': self._validate_non_negative_integer
+        }
+
+        for field, validator in validators.items():
+            if field in book_data:
+                validator(field, book_data[field])
+
+    def _validate_non_empty_string(self, field: str, value: Any) -> None:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{field.capitalize()} must be a non-empty string")
+
+    def _validate_positive_integer(self, field: str, value: Any) -> None:
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{field.capitalize()} must be a positive integer")
+
+    def _validate_non_negative_integer(self, field: str, value: Any) -> None:
+        if not isinstance(value, int) or value < 0:
+            raise ValueError(f"{field.capitalize()} must be a non-negative integer")

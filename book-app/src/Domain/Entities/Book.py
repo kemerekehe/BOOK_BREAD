@@ -1,26 +1,26 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-class Book:
-    def __init__(self, title, author, published_year, quantity, book_id=None):
-        if not title or not author or not published_year or not quantity:
-            raise ValueError("Data cannot be empty.")
-        
-        try:
-            self.published_year = int(published_year)
-        except ValueError:
-            raise ValueError("Published year must be a valid integer.")
+from dataclasses import dataclass
+from typing import Optional
 
-        try:
-            self.quantity = int(quantity)
-        except ValueError:
-            raise ValueError("Quantity must be an integer and greater than zero.")
-        self.id = book_id 
-        self.title = title
-        self.author = author
-        self.published_year = published_year
-        self.quantity = quantity
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
+@dataclass
+class Book:
+    title: str
+    author: str
+    published_year: int
+    quantity: int
+    id: Optional[int] = None
+
+    def __post_init__(self):
+        if not self.title or not self.author:
+            raise ValueError("Title and author cannot be empty.")
         
-        print(f"Book created: {self.id}, {self.title}, {self.author}, {self.published_year}, {self.quantity}")
+        if not isinstance(self.published_year, int) or self.published_year <= 0:
+            raise ValueError("Published year must be a positive integer.")
+
+        if not isinstance(self.quantity, int) or self.quantity < 0:
+            raise ValueError("Quantity must be a non-negative integer.")
 
 
